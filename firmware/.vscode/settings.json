@@ -1,0 +1,10 @@
+{
+  "mesonbuild.configureOnOpen": false,
+  "files.associations": {
+    "*.heex": "phoenix-heex",
+    "*.xrl": "plaintext",
+    "cstdlib": "cpp",
+    "cstdint": "cpp",
+    "cctype": "cpp"
+  }
+}
