@@ -69,6 +69,7 @@ public:
     }
 
     bool parse(const char *expr) {
+        dealloc();
         const char *rest = parseExpr(expr, root);
         return rest && *rest == '\0';
     }
@@ -84,6 +85,7 @@ public:
 private:
     Expr *alloc(ExprType exprType) {
         if (stackTop == 0) {
+            Serial.println("Out of memory");
             return nullptr;
         }
 
@@ -92,10 +94,21 @@ private:
         return &pool[idx];
     }
 
-//    void dealloc(Expr *expr) {
-//        size_t index = expr - pool;
-//        freeIndices[stackTop++] = index;
-//    }
+    void dealloc() {
+        for (size_t i = 0; i < desired_capacity; i++) {
+            freeIndices[i] = i;
+        }
+        stackTop = desired_capacity;
+        root = nullptr;
+    }
+
+    void dealloc(Expr *expr) {
+        if (!expr) {
+            return;
+        }
+        size_t index = expr - pool;
+        freeIndices[stackTop++] = index;
+    }
 
     float eval(Expr *expr, float t, float i, float x, float y) {
         if (!expr) {

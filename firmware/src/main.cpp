@@ -17,16 +17,24 @@ PixelFun<1024> pixelFun;
 #define BLE_PIXELFUN_SERVICE_UUID "565AA538-1311-41B8-BE4D-7018A7CF18AF"
 #define BLE_PIXELFUN_PROGRAM_CHARACTERISTIC_UUID "ABC02BC7-123F-4DEC-98FF-3B7750A401DE"
 #define BLE_PIXELFUN_BRIGHTNESS_CHARACTERISTIC_UUID "02307AFC-72B4-48DE-9FDF-EE26BA1A71C7"
+#define BLE_PIXELFUN_FRAMERATE_CHARACTERISTIC_UUID "C8B74D1F-B691-4825-A60C-7D78D77A322E"
+#define BLE_PIXELFUN_COLOR1_CHARACTERISTIC_UUID "EF598BF8-6CEC-4054-8926-990C5D46B1DA"
+#define BLE_PIXELFUN_COLOR2_CHARACTERISTIC_UUID "4B95E86E-5207-4230-B838-ED361BDFC859"
 
 NimBLEServer *pServer;
 NimBLEService *pService;
 NimBLECharacteristic *pProgramCharacteristic;
 NimBLECharacteristic *pBrightnessCharacteristic;
+NimBLECharacteristic *pFrameRateCharacteristic;
+NimBLECharacteristic *pColor1Characteristic;
+NimBLECharacteristic *pColor2Characteristic;
 NimBLEAdvertising *pAdvertising;
-
 
 char program[1024] = "sin(2*t-hypot(x-3.5,y-3.5))";
 uint8_t brightness = 25;
+uint8_t color1[3] = {251, 72, 196};
+uint8_t color2[3] = {63, 255, 33};
+uint8_t frameRate = 60;
 
 class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
     void onWrite(NimBLECharacteristic *characteristic) override {
@@ -38,6 +46,7 @@ class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
             Serial.println(program);
             if (pixelFun.parse(program)) {
                 Serial.println("parse succeeded");
+                pixelFun.printAST();
             } else {
                 Serial.println("parse failed");
             }
@@ -46,6 +55,31 @@ class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
             brightness = characteristic->getValue().data()[0];
             Serial.println(brightness);
             strip.setBrightness(brightness);
+        } else if (characteristic == pFrameRateCharacteristic) {
+            Serial.println("Frame Rate");
+            frameRate = characteristic->getValue().data()[0];
+            if (frameRate == 0) {
+                frameRate = 1;
+            }
+            Serial.println(frameRate);
+        } else if (characteristic == pColor1Characteristic) {
+            Serial.println("Color 1");
+            if (characteristic->getValue().length() == 3) {
+                memcpy(color1, characteristic->getValue().data(), 3);
+                Serial.printf("%d %d %d\n", color1[0], color1[1], color1[2]);
+            } else {
+                Serial.println("Invalid length");
+            }
+        } else if (characteristic == pColor2Characteristic) {
+            Serial.println("Color 2");
+            if (characteristic->getValue().length() == 3) {
+                memcpy(color2, characteristic->getValue().data(), 3);
+                Serial.printf("%d %d %d\n", color2[0], color2[1], color2[2]);
+            } else {
+                Serial.println("Invalid length");
+            }
+        } else {
+            Serial.println("Unknown");
         }
     }
 };
@@ -66,9 +100,6 @@ void setup() {
     NimBLEDevice::init(BLE_DEVICE_NAME);
     NimBLEDevice::setDeviceName(BLE_DEVICE_NAME);
     NimBLEDevice::setPower(ESP_PWR_LVL_P9);
-    NimBLEDevice::setSecurityIOCap(BLE_HS_IO_NO_INPUT_OUTPUT);
-    NimBLEDevice::setSecurityAuth(true, true, true);
-    NimBLEDevice::setSecurityInitKey(BLE_SM_PAIR_KEY_DIST_ENC | BLE_SM_PAIR_KEY_DIST_ID);
 
     pServer = NimBLEDevice::createServer();
     pServer->advertiseOnDisconnect(true);
@@ -78,19 +109,38 @@ void setup() {
 
     pProgramCharacteristic = pService->createCharacteristic(
             BLE_PIXELFUN_PROGRAM_CHARACTERISTIC_UUID,
-            NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::READ_AUTHEN | NIMBLE_PROPERTY::READ_ENC | NIMBLE_PROPERTY::WRITE |
-            NIMBLE_PROPERTY::WRITE_AUTHEN | NIMBLE_PROPERTY::WRITE_ENC | NIMBLE_PROPERTY::NOTIFY
+            NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE_NR
     );
     pProgramCharacteristic->setCallbacks(&characteristicCallbacks);
     pProgramCharacteristic->setValue((uint8_t *) program, strlen(program));
 
     pBrightnessCharacteristic = pService->createCharacteristic(
             BLE_PIXELFUN_BRIGHTNESS_CHARACTERISTIC_UUID,
-            NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::READ_AUTHEN | NIMBLE_PROPERTY::READ_ENC | NIMBLE_PROPERTY::WRITE |
-            NIMBLE_PROPERTY::WRITE_AUTHEN | NIMBLE_PROPERTY::WRITE_ENC | NIMBLE_PROPERTY::NOTIFY
+            NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE_NR
     );
     pBrightnessCharacteristic->setCallbacks(&characteristicCallbacks);
     pBrightnessCharacteristic->setValue(&brightness, 1);
+
+    pFrameRateCharacteristic = pService->createCharacteristic(
+            BLE_PIXELFUN_FRAMERATE_CHARACTERISTIC_UUID,
+            NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE_NR
+    );
+    pFrameRateCharacteristic->setCallbacks(&characteristicCallbacks);
+    pFrameRateCharacteristic->setValue(&frameRate, 1);
+
+    pColor1Characteristic = pService->createCharacteristic(
+            BLE_PIXELFUN_COLOR1_CHARACTERISTIC_UUID,
+            NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE_NR
+    );
+    pColor1Characteristic->setCallbacks(&characteristicCallbacks);
+    pColor1Characteristic->setValue(color1, 3);
+
+    pColor2Characteristic = pService->createCharacteristic(
+            BLE_PIXELFUN_COLOR2_CHARACTERISTIC_UUID,
+            NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE_NR
+    );
+    pColor2Characteristic->setCallbacks(&characteristicCallbacks);
+    pColor2Characteristic->setValue(color2, 3);
 
     pService->start();
 
@@ -120,19 +170,15 @@ void setup() {
     strip.show();
 }
 
-const uint32_t fps = 60;
-const uint32_t dt_ms = 1000 / fps;
-const float dt_s = 1.0 / fps;
-
 float current_time = 0.0f;
 
-uint32_t interpolate_colors(int r1, int g1, int b1, int r2, int g2, int b2, float t) {
+uint32_t interpolate_colors(const uint8_t a[3], const uint8_t b[3], float t) {
     if (t > 0.0) {
-        return Adafruit_NeoPixel::Color((uint8_t) ((float) r1 * t), (uint8_t) ((float) g1 * t),
-                                        (uint8_t) ((float) b1 * t));
+        return Adafruit_NeoPixel::Color((uint8_t) ((float) a[0] * t), (uint8_t) ((float) a[1] * t),
+                                        (uint8_t) ((float) a[2] * t));
     } else if (t < 1.0) {
-        return Adafruit_NeoPixel::Color((uint8_t) ((float) r2 * -t), (uint8_t) ((float) g2 * -t),
-                                        (uint8_t) ((float) b2 * -t));
+        return Adafruit_NeoPixel::Color((uint8_t) ((float) b[0] * -t), (uint8_t) ((float) b[1] * -t),
+                                        (uint8_t) ((float) b[2] * -t));
     } else {
         return Adafruit_NeoPixel::Color(0, 0, 0);
     }
@@ -148,10 +194,10 @@ void loop() {
                 idx = y * 8 + x;
             }
             float value = pixelFun.eval(current_time, float(idx), float(x), float(y));
-            strip.setPixelColor(idx, interpolate_colors(251, 72, 196, 63, 255, 33, value));
+            strip.setPixelColor(idx, interpolate_colors(color1, color2, value));
         }
     }
     strip.show();
-    current_time += dt_s;
-    delay(dt_ms);
+    current_time += 1.0f / float(frameRate);
+    delayMicroseconds(1000000 / frameRate);
 }
