@@ -29,9 +29,23 @@ enum Var {
 };
 
 enum FuncType {
+    FUNC_RAND,
+    FUNC_RANDOM,
     FUNC_SIN,
     FUNC_COS,
     FUNC_TAN,
+    FUNC_ASIN,
+    FUNC_ACOS,
+    FUNC_ATAN,
+    FUNC_ATAN2,
+    FUNC_ASINH,
+    FUNC_ACOSH,
+    FUNC_ATANH,
+    FUNC_FLOOR,
+    FUNC_CEIL,
+    FUNC_ROUND,
+    FUNC_FRACT,
+    FUNC_TRUNC,
     FUNC_HYPOT,
 };
 
@@ -135,12 +149,42 @@ private:
                 }
             case EXPR_FUNC:
                 switch (expr->funcCall.func) {
+                    case FUNC_RAND:
+                    case FUNC_RANDOM:
+                        return (float) random(RAND_MAX) / (float) RAND_MAX;
                     case FUNC_SIN:
                         return sinf(eval(expr->funcCall.args[0], t, i, x, y));
                     case FUNC_COS:
                         return cosf(eval(expr->funcCall.args[0], t, i, x, y));
                     case FUNC_TAN:
                         return tanf(eval(expr->funcCall.args[0], t, i, x, y));
+                    case FUNC_ASIN:
+                        return asinf(eval(expr->funcCall.args[0], t, i, x, y));
+                    case FUNC_ACOS:
+                        return acosf(eval(expr->funcCall.args[0], t, i, x, y));
+                    case FUNC_ATAN:
+                        return atanf(eval(expr->funcCall.args[0], t, i, x, y));
+                    case FUNC_ATAN2:
+                        return atan2f(eval(expr->funcCall.args[0], t, i, x, y),
+                                      eval(expr->funcCall.args[1], t, i, x, y));
+                    case FUNC_ASINH:
+                        return asinhf(eval(expr->funcCall.args[0], t, i, x, y));
+                    case FUNC_ACOSH:
+                        return acoshf(eval(expr->funcCall.args[0], t, i, x, y));
+                    case FUNC_ATANH:
+                        return atanhf(eval(expr->funcCall.args[0], t, i, x, y));
+                    case FUNC_FLOOR:
+                        return floorf(eval(expr->funcCall.args[0], t, i, x, y));
+                    case FUNC_CEIL:
+                        return ceilf(eval(expr->funcCall.args[0], t, i, x, y));
+                    case FUNC_ROUND:
+                        return roundf(eval(expr->funcCall.args[0], t, i, x, y));
+                    case FUNC_FRACT: {
+                        auto arg = eval(expr->funcCall.args[0], t, i, x, y);
+                        return arg - truncf(arg);
+                    }
+                    case FUNC_TRUNC:
+                        return truncf(eval(expr->funcCall.args[0], t, i, x, y));
                     case FUNC_HYPOT:
                         return sqrt(pow(eval(expr->funcCall.args[0], t, i, x, y), 2.0f) +
                                     pow(eval(expr->funcCall.args[1], t, i, x, y), 2.0f));
@@ -307,10 +351,12 @@ private:
             const char *name;
             Var var;
         } vars[] = {
-                {"t", VAR_T},
-                {"i", VAR_I},
-                {"x", VAR_X},
-                {"y", VAR_Y},
+                {"t",   VAR_T},
+                {"i",   VAR_I},
+                {"x",   VAR_X},
+                {"y",   VAR_Y},
+                {"pi",  VAR_PI},
+                {"tau", VAR_TAU},
         };
 
         for (size_t i = 0; i < sizeof(vars) / sizeof(vars[0]); i++) {
@@ -334,10 +380,23 @@ private:
             FuncType func;
             size_t arity;
         } funcs[]{
-                {"sin",   FUNC_SIN,   1},
-                {"cos",   FUNC_COS,   1},
-                {"tan",   FUNC_TAN,   1},
-                {"hypot", FUNC_HYPOT, 2},
+                {"rand",   FUNC_RAND,   1},
+                {"random", FUNC_RANDOM, 1},
+                {"sin",    FUNC_SIN,    1},
+                {"cos",    FUNC_COS,    1},
+                {"tan",    FUNC_TAN,    1},
+                {"asin",   FUNC_ASIN,   1},
+                {"acos",   FUNC_ACOS,   1},
+                {"atan",   FUNC_ATAN,   1},
+                {"atan2",  FUNC_ATAN2,  2},
+                {"asinh",  FUNC_ASINH,  1},
+                {"acosh",  FUNC_ACOSH,  1},
+                {"atanh",  FUNC_ATANH,  1},
+                {"floor",  FUNC_FLOOR,  1},
+                {"ceil",   FUNC_CEIL,   1},
+                {"round",  FUNC_ROUND,  1},
+                {"fract",  FUNC_FRACT,  1},
+                {"hypot",  FUNC_HYPOT,  2}
         };
 
         for (size_t i = 0; i < sizeof(funcs) / sizeof(funcs[0]); i++) {
@@ -376,7 +435,6 @@ private:
     void printAST(Expr *node, int indent = 0) {
         if (!node) return;
 
-        // Indent the current line to show the tree structure
         for (int i = 0; i < indent; ++i) {
             Serial.print("  ");
         }
@@ -434,6 +492,10 @@ private:
             case EXPR_FUNC:
                 Serial.print("Func: ");
                 switch (node->funcCall.func) {
+                    case FUNC_RAND:
+                    case FUNC_RANDOM:
+                        Serial.println("RANDOM");
+                        break;
                     case FUNC_SIN:
                         Serial.println("SIN");
                         break;
@@ -442,6 +504,42 @@ private:
                         break;
                     case FUNC_TAN:
                         Serial.println("TAN");
+                        break;
+                    case FUNC_ASIN:
+                        Serial.println("ASIN");
+                        break;
+                    case FUNC_ACOS:
+                        Serial.println("ACOS");
+                        break;
+                    case FUNC_ATAN:
+                        Serial.println("ATAN");
+                        break;
+                    case FUNC_ATAN2:
+                        Serial.println("ATAN2");
+                        break;
+                    case FUNC_ASINH:
+                        Serial.println("ASINH");
+                        break;
+                    case FUNC_ACOSH:
+                        Serial.println("ACOSH");
+                        break;
+                    case FUNC_ATANH:
+                        Serial.println("ATANH");
+                        break;
+                    case FUNC_FLOOR:
+                        Serial.println("FLOOR");
+                        break;
+                    case FUNC_CEIL:
+                        Serial.println("CEIL");
+                        break;
+                    case FUNC_ROUND:
+                        Serial.println("ROUND");
+                        break;
+                    case FUNC_FRACT:
+                        Serial.println("FRACT");
+                        break;
+                    case FUNC_TRUNC:
+                        Serial.println("TRUNC");
                         break;
                     case FUNC_HYPOT:
                         Serial.println("HYPOT");
