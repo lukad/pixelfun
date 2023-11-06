@@ -116,12 +116,12 @@ private:
         root = nullptr;
     }
 
-    void dealloc(Expr *expr) {
+    void dealloc(const Expr *expr) {
         if (!expr) {
             return;
         }
-        size_t index = expr - pool;
-        freeIndices[stackTop++] = index;
+        size_t idx = expr - pool;
+        freeIndices[stackTop++] = idx;
     }
 
     float eval(Expr *expr, float t, float i, float x, float y) {
@@ -268,24 +268,39 @@ private:
         return end;
     };
 
-    const char *parseBinOp(const char *exprStr, BinOpType &op) {
-        switch (*exprStr) {
-            case '+':
-                op = BINOP_ADD;
-                break;
-            case '-':
-                op = BINOP_SUB;
-                break;
-            case '*':
-                op = BINOP_MUL;
-                break;
-            case '/':
-                op = BINOP_DIV;
-                break;
-            default:
-                return nullptr;
+    const char *parseBinOp(const char *input, BinOpType &op) {
+        static const struct {
+            const char *opStr;
+            BinOpType opType;
+        } ops[] = {
+                {"**", BINOP_POW},
+                {"%",  BINOP_MOD},
+                {"+",  BINOP_ADD},
+                {"-",  BINOP_SUB},
+                {"*",  BINOP_MUL},
+                {"/",  BINOP_DIV},
+                {"<<", BINOP_LSHIFT},
+                {">>", BINOP_RSHIFT},
+                {"<=", BINOP_LTE},
+                {">=", BINOP_GTE},
+                {"<",  BINOP_LT},
+                {">",  BINOP_GT},
+                {"==", BINOP_EQ},
+                {"!=", BINOP_NEQ},
+                {"||", BINOP_OR},
+                {"|",  BINOP_BIT_OR},
+                {"&&", BINOP_AND},
+                {"&",  BINOP_BIT_AND},
+                {"^",  BINOP_BIT_XOR},
+        };
+        for (size_t i = 0; i < sizeof(ops) / sizeof(ops[0]); i++) {
+            size_t len = strlen(ops[i].opStr);
+            if (strncmp(input, ops[i].opStr, len) == 0) {
+                op = ops[i].opType;
+                return input + len;
+            }
         }
-        return exprStr + 1;
+        return input;
     }
 
     const char *parseFactor(const char *input, Expr *&node) {
