@@ -13,10 +13,25 @@ enum ExprType {
 };
 
 enum BinOpType {
+    BINOP_POW,
+    BINOP_MOD,
     BINOP_ADD,
     BINOP_SUB,
     BINOP_MUL,
     BINOP_DIV,
+    BINOP_LSHIFT,
+    BINOP_RSHIFT,
+    BINOP_LTE,
+    BINOP_GTE,
+    BINOP_LT,
+    BINOP_GT,
+    BINOP_EQ,
+    BINOP_NEQ,
+    BINOP_OR,
+    BINOP_BIT_OR,
+    BINOP_AND,
+    BINOP_BIT_AND,
+    BINOP_BIT_XOR
 };
 
 enum Var {
@@ -83,9 +98,15 @@ public:
     }
 
     bool parse(const char *expr) {
-        dealloc();
+        if (root != nullptr) {
+            dealloc();
+        }
         const char *rest = parseExpr(expr, root);
-        return rest && *rest == '\0';
+        if (rest && *rest == '\0') {
+            return true;
+        }
+        dealloc();
+        return false;
     }
 
     float eval(float t, float i, float x, float y) {
@@ -116,12 +137,12 @@ private:
         root = nullptr;
     }
 
-    void dealloc(Expr *expr) {
+    void dealloc(const Expr *expr) {
         if (!expr) {
             return;
         }
-        size_t index = expr - pool;
-        freeIndices[stackTop++] = index;
+        size_t idx = expr - pool;
+        freeIndices[stackTop++] = idx;
     }
 
     float eval(Expr *expr, float t, float i, float x, float y) {
@@ -193,6 +214,10 @@ private:
                 float lhs = eval(expr->binop.a, t, i, x, y);
                 float rhs = eval(expr->binop.b, t, i, x, y);
                 switch (expr->binop.op) {
+                    case BINOP_POW:
+                        return pow(lhs, rhs);
+                    case BINOP_MOD:
+                        return fmod(lhs, rhs);
                     case BINOP_ADD:
                         return lhs + rhs;
                     case BINOP_SUB:
@@ -204,6 +229,32 @@ private:
                             return 0;
                         }
                         return lhs / rhs;
+                    case BINOP_LSHIFT:
+                        return (float) ((int) lhs << (int) rhs);
+                    case BINOP_RSHIFT:
+                        return (float) ((int) lhs >> (int) rhs);
+                    case BINOP_LTE:
+                        return lhs <= rhs ? 1.0 : 0.0;
+                    case BINOP_GTE:
+                        return lhs >= rhs ? 1.0 : 0.0;
+                    case BINOP_LT:
+                        return lhs < rhs ? 1.0 : 0.0;
+                    case BINOP_GT:
+                        return lhs > rhs ? 1.0 : 0.0;
+                    case BINOP_EQ:
+                        return lhs == rhs ? 1.0 : 0.0;
+                    case BINOP_NEQ:
+                        return lhs != rhs ? 1.0 : 0.0;
+                    case BINOP_OR:
+                        return (lhs == 1.0 || rhs == 1.0) ? 1.0 : 0.0;
+                    case BINOP_BIT_OR:
+                        return (float) ((int) lhs | (int) rhs);
+                    case BINOP_AND:
+                        return (lhs == 1.0 && rhs == 1.0) ? 1.0 : 0.0;
+                    case BINOP_BIT_AND:
+                        return (float) ((int) lhs & (int) rhs);
+                    case BINOP_BIT_XOR:
+                        return (float) ((int) lhs ^ (int) rhs);
                 }
         }
 
@@ -211,7 +262,7 @@ private:
     }
 
     const char *parseExpr(const char *input, Expr *&node) {
-        input = parseTerm(input, node);
+        input = parseLogical(input, node);
         if (!input) {
             return nullptr;
         }
@@ -233,7 +284,7 @@ private:
             }
 
             Expr *rhs = nullptr;
-            input = parseTerm(input, rhs);
+            input = parseLogical(input, rhs);
             if (!input) {
                 return nullptr;
             }
@@ -268,45 +319,43 @@ private:
         return end;
     };
 
-    const char *parseBinOp(const char *exprStr, BinOpType &op) {
-        switch (*exprStr) {
-            case '+':
-                op = BINOP_ADD;
-                break;
-            case '-':
-                op = BINOP_SUB;
-                break;
-            case '*':
-                op = BINOP_MUL;
-                break;
-            case '/':
-                op = BINOP_DIV;
-                break;
-            default:
-                return nullptr;
-        }
-        return exprStr + 1;
-    }
-
-    const char *parseFactor(const char *input, Expr *&node) {
-        if (*input == '(') {
-            input = parseExpr(input + 1, node);
-            if (!input || *input != ')') {
-                return nullptr;
+    const char *parseBinOp(const char *input, BinOpType &op) {
+        static const struct {
+            const char *opStr;
+            BinOpType opType;
+        } ops[] = {
+                {"**", BINOP_POW},
+                {"%",  BINOP_MOD},
+                {"+",  BINOP_ADD},
+                {"-",  BINOP_SUB},
+                {"*",  BINOP_MUL},
+                {"/",  BINOP_DIV},
+                {"<<", BINOP_LSHIFT},
+                {">>", BINOP_RSHIFT},
+                {"<=", BINOP_LTE},
+                {">=", BINOP_GTE},
+                {"<",  BINOP_LT},
+                {">",  BINOP_GT},
+                {"==", BINOP_EQ},
+                {"!=", BINOP_NEQ},
+                {"||", BINOP_OR},
+                {"|",  BINOP_BIT_OR},
+                {"&&", BINOP_AND},
+                {"&",  BINOP_BIT_AND},
+                {"^",  BINOP_BIT_XOR},
+        };
+        for (size_t i = 0; i < sizeof(ops) / sizeof(ops[0]); i++) {
+            size_t len = strlen(ops[i].opStr);
+            if (strncmp(input, ops[i].opStr, len) == 0) {
+                op = ops[i].opType;
+                return input + len;
             }
-            return input + 1;
-        } else if (isAlpha(*input)) {
-            const char *rest = parseFunction(input, node);
-            if (rest) {
-                return rest;
-            }
-            return parseIdentifier(input, node);
         }
-        return parseNumber(input, node);
+        return nullptr;
     }
 
     const char *parseTerm(const char *input, Expr *&node) {
-        input = parseFactor(input, node);
+        input = parsePower(input, node);
         if (!input) {
             return nullptr;
         }
@@ -318,7 +367,7 @@ private:
 
             BinOpType op;
             const char *nextInput = parseBinOp(input, op);
-            if (!nextInput || (op != BINOP_MUL && op != BINOP_DIV)) {
+            if (!nextInput || (op != BINOP_MUL && op != BINOP_DIV && op != BINOP_MOD)) {
                 break;
             }
 
@@ -328,7 +377,7 @@ private:
             }
 
             Expr *rhs = nullptr;
-            input = parseFactor(input, rhs);
+            input = parsePower(input, rhs);
             if (!input) {
                 return nullptr;
             }
@@ -344,6 +393,270 @@ private:
             node = binOp;
         }
         return input;
+    }
+
+    const char *parsePower(const char *input, Expr *&node) {
+        input = parsePrimary(input, node);
+        if (!input) {
+            return nullptr;
+        }
+
+        while (true) {
+            const char *nextInput = strncmp(input, "**", 2) == 0 ? input + 2 : nullptr;
+            if (!nextInput) {
+                break;
+            }
+
+            while (*nextInput && isspace(*nextInput)) {
+                nextInput++;
+            }
+
+            Expr *rhs = nullptr;
+            nextInput = parsePrimary(nextInput, rhs);
+            if (!nextInput) {
+                return nullptr;
+            }
+
+            Expr *powOp = alloc(EXPR_BINOP);
+            if (!powOp) {
+                return nullptr;
+            }
+
+            powOp->binop.op = BINOP_POW;
+            powOp->binop.a = node;
+            powOp->binop.b = rhs;
+            node = powOp;
+            input = nextInput;
+        }
+
+        return input;
+    }
+
+    const char *parseShift(const char *input, Expr *&node) {
+        input = parseTerm(input, node);
+        if (!input) {
+            return nullptr;
+        }
+
+        while (true) {
+            if (*input && isspace(*input)) {
+                input++;
+            }
+
+            BinOpType op;
+            const char *nextInput = parseBinOp(input, op);
+            if (!nextInput || (op != BINOP_LSHIFT && op != BINOP_RSHIFT)) {
+                break;
+            }
+
+            input = nextInput;
+            while (*input && isspace(*input)) {
+                input++;
+            }
+
+            Expr *rhs = nullptr;
+            input = parseTerm(input, rhs);
+            if (!input) {
+                return nullptr;
+            }
+
+            Expr *binOp = alloc(EXPR_BINOP);
+            if (!binOp) {
+                return nullptr;
+            }
+
+            binOp->binop.op = op;
+            binOp->binop.a = node;
+            binOp->binop.b = rhs;
+            node = binOp;
+        }
+
+        return input;
+    }
+
+    const char *parseComparison(const char *input, Expr *&node) {
+        input = parseShift(input, node);
+        if (!input) {
+            return nullptr;
+        }
+
+        while (true) {
+            while (*input && isspace(*input)) {
+                input++;
+            }
+
+            BinOpType op;
+            const char *nextInput = parseBinOp(input, op);
+            if (!nextInput || (op != BINOP_LTE && op != BINOP_GTE && op != BINOP_LT && op != BINOP_GT)) {
+                break;
+            }
+
+            input = nextInput;
+            while (*input && isspace(*input)) {
+                input++;
+            }
+
+            Expr *rhs = nullptr;
+            input = parseShift(input, rhs);
+            if (!input) {
+                return nullptr;
+            }
+
+            Expr *binOp = alloc(EXPR_BINOP);
+            if (!binOp) {
+                return nullptr;
+            }
+
+            binOp->binop.op = op;
+            binOp->binop.a = node;
+            binOp->binop.b = rhs;
+            node = binOp;
+        }
+        return input;
+    }
+
+    const char *parseEquality(const char *input, Expr *&node) {
+        input = parseComparison(input, node);
+        if (!input) {
+            return nullptr;
+        }
+
+        while (true) {
+            while (*input && isspace(*input)) {
+                input++;
+            }
+
+            BinOpType op;
+            const char *nextInput = parseBinOp(input, op);
+            if (!nextInput || (op != BINOP_EQ && op != BINOP_NEQ)) {
+                break;
+            }
+
+            input = nextInput;
+            while (*input && isspace(*input)) {
+                input++;
+            }
+
+            Expr *rhs = nullptr;
+            input = parseComparison(input, rhs);
+            if (!input) {
+                return nullptr;
+            }
+
+            Expr *binOp = alloc(EXPR_BINOP);
+            if (!binOp) {
+                return nullptr;
+            }
+
+            binOp->binop.op = op;
+            binOp->binop.a = node;
+            binOp->binop.b = rhs;
+            node = binOp;
+        }
+        return input;
+    }
+
+    const char *parseBitwise(const char *input, Expr *&node) {
+        input = parseEquality(input, node);
+        if (!input) {
+            return nullptr;
+        }
+
+        while (true) {
+            while (*input && isspace(*input)) {
+                input++;
+            }
+
+            BinOpType op;
+            const char *nextInput = parseBinOp(input, op);
+            if (!nextInput || (op != BINOP_BIT_OR && op != BINOP_BIT_AND && op != BINOP_BIT_XOR)) {
+                break;
+            }
+
+            input = nextInput;
+            while (*input && isspace(*input)) {
+                input++;
+            }
+
+            Expr *rhs = nullptr;
+            input = parseEquality(input, rhs);
+            if (!input) {
+                return nullptr;
+            }
+
+            Expr *binOp = alloc(EXPR_BINOP);
+            if (!binOp) {
+                return nullptr;
+            }
+
+            binOp->binop.op = op;
+            binOp->binop.a = node;
+            binOp->binop.b = rhs;
+            node = binOp;
+        }
+        return input;
+    }
+
+    const char *parseLogical(const char *input, Expr *&expr) {
+        input = parseBitwise(input, expr);
+        if (!input) {
+            return nullptr;
+        }
+
+        while (true) {
+            while (*input && isspace(*input)) {
+                input++;
+            }
+
+            BinOpType op;
+            const char *nextInput = parseBinOp(input, op);
+            if (!nextInput || (op != BINOP_OR && op != BINOP_AND)) {
+                break;
+            }
+
+            input = nextInput;
+            while (*input && isspace(*input)) {
+                input++;
+            }
+
+            Expr *rhs = nullptr;
+            input = parseBitwise(input, rhs);
+            if (!input) {
+                return nullptr;
+            }
+
+            Expr *binOp = alloc(EXPR_BINOP);
+            if (!binOp) {
+                return nullptr;
+            }
+
+            binOp->binop.op = op;
+            binOp->binop.a = expr;
+            binOp->binop.b = rhs;
+            expr = binOp;
+        }
+        return input;
+    }
+
+    const char *parsePrimary(const char *input, Expr *&node) {
+        while (*input && isspace(*input)) {
+            input++;
+        }
+        if (*input == '(') {
+            input++;
+            input = parseExpr(input, node);
+            if (!input || *input != ')') {
+                return nullptr;
+            }
+            return input + 1;
+        } else if (isAlpha(*input)) {
+            const char *rest = parseFunction(input, node);
+            if (rest) {
+                return rest;
+            }
+            return parseIdentifier(input, node);
+        }
+        return parseNumber(input, node);
     }
 
     const char *parseIdentifier(const char *input, Expr *&node) {
@@ -380,8 +693,8 @@ private:
             FuncType func;
             size_t arity;
         } funcs[]{
-                {"rand",   FUNC_RAND,   1},
-                {"random", FUNC_RANDOM, 1},
+                {"rand",   FUNC_RAND,   0},
+                {"random", FUNC_RANDOM, 0},
                 {"sin",    FUNC_SIN,    1},
                 {"cos",    FUNC_COS,    1},
                 {"tan",    FUNC_TAN,    1},
@@ -411,7 +724,6 @@ private:
                 input += len + 1;
 
                 for (size_t arg = 0; arg < funcs[i].arity; arg++) {
-
                     if (arg > 0) {
                         if (*input != ',') return nullptr;  // Error: missing comma between arguments
                         input++;  // Skip comma
@@ -431,7 +743,6 @@ private:
         return nullptr;
     }
 
-
     void printAST(Expr *node, int indent = 0) {
         if (!node) return;
 
@@ -448,6 +759,12 @@ private:
             case EXPR_BINOP:
                 Serial.print("BinOp: ");
                 switch (node->binop.op) {
+                    case BINOP_POW:
+                        Serial.println("POW");
+                        break;
+                    case BINOP_MOD:
+                        Serial.println("MOD");
+                        break;
                     case BINOP_ADD:
                         Serial.println("ADD");
                         break;
@@ -459,6 +776,44 @@ private:
                         break;
                     case BINOP_DIV:
                         Serial.println("DIV");
+                        break;
+                    case BINOP_LSHIFT:
+                        Serial.println("LSHIFT");
+                    case BINOP_RSHIFT:
+                        Serial.println("RSHIFT");
+                        break;
+                    case BINOP_LTE:
+                        Serial.println("LTE");
+                        break;
+                    case BINOP_GTE:
+                        Serial.println("GTE");
+                        break;
+                    case BINOP_LT:
+                        Serial.println("LT");
+                        break;
+                    case BINOP_GT:
+                        Serial.println("GT");
+                        break;
+                    case BINOP_EQ:
+                        Serial.println("EQ");
+                        break;
+                    case BINOP_NEQ:
+                        Serial.println("NEQ");
+                        break;
+                    case BINOP_OR:
+                        Serial.println("OR");
+                        break;
+                    case BINOP_BIT_OR:
+                        Serial.println("BIT_OR");
+                        break;
+                    case BINOP_AND:
+                        Serial.println("AND");
+                        break;
+                    case BINOP_BIT_AND:
+                        Serial.println("BIT_AND");
+                        break;
+                    case BINOP_BIT_XOR:
+                        Serial.println("BIT_XOR");
                         break;
                 }
                 printAST(node->binop.a, indent + 1);
