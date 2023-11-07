@@ -173,6 +173,7 @@ void setup() {
 float current_time = 0.0f;
 
 uint32_t interpolate_colors(const uint8_t a[3], const uint8_t b[3], float t) {
+    t = fminf(fmaxf(t, -1.0f), 1.0f);
     if (t > 0.0) {
         return Adafruit_NeoPixel::Color((uint8_t) ((float) a[0] * t), (uint8_t) ((float) a[1] * t),
                                         (uint8_t) ((float) a[2] * t));
