@@ -6,8 +6,16 @@
 
 #include "PixelFun.h"
 
+#ifndef DATA_PIN
 #define DATA_PIN A11
-#define PIXEL_COUNT 64
+#endif
+#ifndef WIDTH
+#define WIDTH 8
+#endif
+#ifndef HEIGHT
+#define HEIGHT 8
+#endif
+const int PIXEL_COUNT = WIDTH * HEIGHT;
 
 Adafruit_NeoPixel strip(PIXEL_COUNT, DATA_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -186,13 +194,13 @@ uint32_t interpolate_colors(const uint8_t a[3], const uint8_t b[3], float t) {
 }
 
 void loop() {
-    for (int y = 0; y < 8; y++) {
-        for (int x = 0; x < 8; x++) {
+    for (int y = 0; y < HEIGHT; y++) {
+        for (int x = 0; x < WIDTH; x++) {
             int idx;
             if (y % 2 == 0) {
-                idx = y * 8 + (7 - x);
+                idx = y * WIDTH + (WIDTH - 1 - x);
             } else {
-                idx = y * 8 + x;
+                idx = y * WIDTH + x;
             }
             float value = pixelFun.eval(current_time, float(idx), float(x), float(y));
             strip.setPixelColor(idx, interpolate_colors(color1, color2, value));
