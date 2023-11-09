@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/platformio/platformio-core/develop/platformio/assets/schema/library.json",
   "name": "PixelFun",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Parses and evaluates simple mathematical expressions that allow you to make shader like effects.",
   "keywords": "math, expression, parser",
   "repository": {
