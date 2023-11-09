@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
 #include <NimBLEDevice.h>
-
+#include <tuple>
 #include <NimBLEHIDDevice.h>
 
 #include <PixelFun.h>
@@ -179,19 +179,6 @@ void setup() {
 
 float current_time = 0.0f;
 
-uint32_t interpolate_colors(const uint8_t a[3], const uint8_t b[3], float t) {
-    t = fminf(fmaxf(t, -1.0f), 1.0f);
-    if (t > 0.0) {
-        return Adafruit_NeoPixel::Color((uint8_t) ((float) a[0] * t), (uint8_t) ((float) a[1] * t),
-                                        (uint8_t) ((float) a[2] * t));
-    } else if (t < 1.0) {
-        return Adafruit_NeoPixel::Color((uint8_t) ((float) b[0] * -t), (uint8_t) ((float) b[1] * -t),
-                                        (uint8_t) ((float) b[2] * -t));
-    } else {
-        return Adafruit_NeoPixel::Color(0, 0, 0);
-    }
-}
-
 void loop() {
     for (int y = 0; y < HEIGHT; y++) {
         for (int x = 0; x < WIDTH; x++) {
@@ -202,7 +189,9 @@ void loop() {
                 idx = y * WIDTH + x;
             }
             float value = pixelFun.eval(current_time, float(idx), float(x), float(y));
-            strip.setPixelColor(idx, interpolate_colors(color1, color2, value));
+            uint8_t r, g, b;
+            std::tie(r, g, b) = pixelFun.interpolateColors(color1, color2, value);
+            strip.setPixelColor(idx, Adafruit_NeoPixel::Color(r, g, b));
         }
     }
     strip.show();

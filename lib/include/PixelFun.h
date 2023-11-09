@@ -4,6 +4,7 @@
 #include <stack>
 #include <cctype>
 #include <cstring>
+#include <tuple>
 
 enum ExprType {
     EXPR_NUMBER,
@@ -94,6 +95,19 @@ public:
     PixelFun() : pool(), stackTop(desired_capacity), freeIndices(), root(nullptr) {
         for (size_t i = 0; i < desired_capacity; i++) {
             freeIndices[i] = i;
+        }
+    }
+
+    std::tuple<uint8_t, uint8_t, uint8_t> interpolateColors(uint8_t a[3], uint8_t b[3], float t) {
+        t = fminf(fmaxf(t, -1.0f), 1.0f);
+        if (t > 0.0) {
+            return std::tuple<uint8_t, uint8_t, uint8_t>{(uint8_t) ((float) a[0] * t), (uint8_t) ((float) a[1] * t),
+                                                         (uint8_t) ((float) a[2] * t)};
+        } else if (t < 1.0) {
+            return std::tuple<uint8_t, uint8_t, uint8_t>{(uint8_t) ((float) b[0] * -t), (uint8_t) ((float) b[1] * -t),
+                                                         (uint8_t) ((float) b[2] * -t)};
+        } else {
+            return std::tuple<uint8_t, uint8_t, uint8_t>{0, 0, 0};
         }
     }
 
