@@ -1,0 +1,15 @@
+name: Publish to PlatformIO
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Publish
+        uses: BOJIT/platformio-publish@bd69d4ae4f4034180131dcf66f61bdcfcaaa8766
+        with:
+          token: ${{ secrets.PLATFORMIO_PAT }}
