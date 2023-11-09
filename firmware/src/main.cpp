@@ -4,7 +4,7 @@
 
 #include <NimBLEHIDDevice.h>
 
-#include "PixelFun.h"
+#include <PixelFun.h>
 
 #ifndef DATA_PIN
 #define DATA_PIN A11
@@ -111,7 +111,6 @@ void setup() {
 
     pServer = NimBLEDevice::createServer();
     pServer->advertiseOnDisconnect(true);
-
 
     pService = pServer->createService(BLE_PIXELFUN_SERVICE_UUID);
 
