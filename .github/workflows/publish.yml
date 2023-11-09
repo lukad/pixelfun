@@ -4,12 +4,27 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  publish:
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./lib
 
     steps:
       - uses: actions/checkout@v3
-      - name: Publish
-        uses: BOJIT/platformio-publish@bd69d4ae4f4034180131dcf66f61bdcfcaaa8766
+      - uses: actions/cache@v3
         with:
-          token: ${{ secrets.PLATFORMIO_PAT }}
+          path: |
+            ~/.cache/pip
+            ~/.platformio/.cache
+          key: ${{ runner.os }}-pio
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+      - name: Install PlatformIO Core
+        run: pip install --upgrade platformio
+      - name: Publish
+        env:
+          PLATFORMIO_AUTH_TOKEN: ${{ secrets.PLATFORMIO_PAT }}
+        run: pio pkg publish
