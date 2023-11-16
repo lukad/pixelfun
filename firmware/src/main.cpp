@@ -182,16 +182,15 @@ float current_time = 0.0f;
 void loop() {
     for (int y = 0; y < HEIGHT; y++) {
         for (int x = 0; x < WIDTH; x++) {
-            int idx;
+            int idx = y * WIDTH + x;
+            int led_idx = idx;
             if (y % 2 == 0) {
-                idx = y * WIDTH + (WIDTH - 1 - x);
-            } else {
-                idx = y * WIDTH + x;
+                led_idx = y * WIDTH + (WIDTH - 1 - x);
             }
             float value = pixelFun.eval(current_time, float(idx), float(x), float(y));
             uint8_t r, g, b;
             std::tie(r, g, b) = pixelFun.interpolateColors(color1, color2, value);
-            strip.setPixelColor(idx, Adafruit_NeoPixel::Color(r, g, b));
+            strip.setPixelColor(led_idx, Adafruit_NeoPixel::Color(r, g, b));
         }
     }
     strip.show();
