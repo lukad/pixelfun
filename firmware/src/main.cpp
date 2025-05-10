@@ -44,49 +44,72 @@ uint8_t color1[3] = {251, 72, 196};
 uint8_t color2[3] = {63, 255, 33};
 uint8_t frameRate = 60;
 
-class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
-    void onWrite(NimBLECharacteristic *characteristic) override {
+class CharacteristicCallbacks : public NimBLECharacteristicCallbacks
+{
+    void onWrite(NimBLECharacteristic *characteristic) override
+    {
         Serial.print("Write ");
-        if (characteristic == pProgramCharacteristic) {
+        if (characteristic == pProgramCharacteristic)
+        {
             Serial.println("Program");
-            strncpy(program, (char *) characteristic->getValue().data(), sizeof(program) - 1);
+            strncpy(program, (char *)characteristic->getValue().data(), sizeof(program) - 1);
             program[sizeof(program) - 1] = '\0';
             Serial.println(program);
-            if (pixelFun.parse(program)) {
+            if (pixelFun.parse(program))
+            {
                 Serial.println("parse succeeded");
                 pixelFun.printAST();
-            } else {
+            }
+            else
+            {
                 Serial.println("parse failed");
             }
-        } else if (characteristic == pBrightnessCharacteristic) {
+        }
+        else if (characteristic == pBrightnessCharacteristic)
+        {
             Serial.println("Brightness");
             brightness = characteristic->getValue().data()[0];
             Serial.println(brightness);
             strip.setBrightness(brightness);
-        } else if (characteristic == pFrameRateCharacteristic) {
+        }
+        else if (characteristic == pFrameRateCharacteristic)
+        {
             Serial.println("Frame Rate");
             frameRate = characteristic->getValue().data()[0];
-            if (frameRate == 0) {
+            if (frameRate == 0)
+            {
                 frameRate = 1;
             }
             Serial.println(frameRate);
-        } else if (characteristic == pColor1Characteristic) {
+        }
+        else if (characteristic == pColor1Characteristic)
+        {
             Serial.println("Color 1");
-            if (characteristic->getValue().length() == 3) {
+            if (characteristic->getValue().length() == 3)
+            {
                 memcpy(color1, characteristic->getValue().data(), 3);
                 Serial.printf("%d %d %d\n", color1[0], color1[1], color1[2]);
-            } else {
+            }
+            else
+            {
                 Serial.println("Invalid length");
             }
-        } else if (characteristic == pColor2Characteristic) {
+        }
+        else if (characteristic == pColor2Characteristic)
+        {
             Serial.println("Color 2");
-            if (characteristic->getValue().length() == 3) {
+            if (characteristic->getValue().length() == 3)
+            {
                 memcpy(color2, characteristic->getValue().data(), 3);
                 Serial.printf("%d %d %d\n", color2[0], color2[1], color2[2]);
-            } else {
+            }
+            else
+            {
                 Serial.println("Invalid length");
             }
-        } else {
+        }
+        else
+        {
             Serial.println("Unknown");
         }
     }
@@ -94,16 +117,9 @@ class CharacteristicCallbacks : public NimBLECharacteristicCallbacks {
 
 CharacteristicCallbacks characteristicCallbacks;
 
-void setup() {
+void setup()
+{
     Serial.begin(115200);
-
-    for (int i = 0; i < 500; i++) {
-        if (Serial) {
-            Serial.println("Serial ready");
-            break;
-        }
-        delay(1);
-    }
 
     NimBLEDevice::init(BLE_DEVICE_NAME);
     NimBLEDevice::setDeviceName(BLE_DEVICE_NAME);
@@ -115,37 +131,32 @@ void setup() {
     pService = pServer->createService(BLE_PIXELFUN_SERVICE_UUID);
 
     pProgramCharacteristic = pService->createCharacteristic(
-            BLE_PIXELFUN_PROGRAM_CHARACTERISTIC_UUID,
-            NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE_NR
-    );
+        BLE_PIXELFUN_PROGRAM_CHARACTERISTIC_UUID,
+        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE_NR);
     pProgramCharacteristic->setCallbacks(&characteristicCallbacks);
-    pProgramCharacteristic->setValue((uint8_t *) program, strlen(program));
+    pProgramCharacteristic->setValue((uint8_t *)program, strlen(program));
 
     pBrightnessCharacteristic = pService->createCharacteristic(
-            BLE_PIXELFUN_BRIGHTNESS_CHARACTERISTIC_UUID,
-            NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE_NR
-    );
+        BLE_PIXELFUN_BRIGHTNESS_CHARACTERISTIC_UUID,
+        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE_NR);
     pBrightnessCharacteristic->setCallbacks(&characteristicCallbacks);
     pBrightnessCharacteristic->setValue(&brightness, 1);
 
     pFrameRateCharacteristic = pService->createCharacteristic(
-            BLE_PIXELFUN_FRAMERATE_CHARACTERISTIC_UUID,
-            NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE_NR
-    );
+        BLE_PIXELFUN_FRAMERATE_CHARACTERISTIC_UUID,
+        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE_NR);
     pFrameRateCharacteristic->setCallbacks(&characteristicCallbacks);
     pFrameRateCharacteristic->setValue(&frameRate, 1);
 
     pColor1Characteristic = pService->createCharacteristic(
-            BLE_PIXELFUN_COLOR1_CHARACTERISTIC_UUID,
-            NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE_NR
-    );
+        BLE_PIXELFUN_COLOR1_CHARACTERISTIC_UUID,
+        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE_NR);
     pColor1Characteristic->setCallbacks(&characteristicCallbacks);
     pColor1Characteristic->setValue(color1, 3);
 
     pColor2Characteristic = pService->createCharacteristic(
-            BLE_PIXELFUN_COLOR2_CHARACTERISTIC_UUID,
-            NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE_NR
-    );
+        BLE_PIXELFUN_COLOR2_CHARACTERISTIC_UUID,
+        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE_NR);
     pColor2Characteristic->setCallbacks(&characteristicCallbacks);
     pColor2Characteristic->setValue(color2, 3);
 
@@ -158,15 +169,21 @@ void setup() {
     pAdvertising->setMinPreferred(0x06);
     pAdvertising->setMaxPreferred(0x12);
 
-    if (NimBLEDevice::startAdvertising()) {
+    if (NimBLEDevice::startAdvertising())
+    {
         Serial.println("Started advertising");
-    } else {
+    }
+    else
+    {
         Serial.println("Failed to start advertising");
     }
 
-    if (pixelFun.parse(program)) {
+    if (pixelFun.parse(program))
+    {
         Serial.println("parse succeeded");
-    } else {
+    }
+    else
+    {
         Serial.println("parse failed");
     }
 
@@ -179,12 +196,16 @@ void setup() {
 
 float current_time = 0.0f;
 
-void loop() {
-    for (int y = 0; y < HEIGHT; y++) {
-        for (int x = 0; x < WIDTH; x++) {
+void loop()
+{
+    for (int y = 0; y < HEIGHT; y++)
+    {
+        for (int x = 0; x < WIDTH; x++)
+        {
             int idx = y * WIDTH + x;
             int led_idx = idx;
-            if (y % 2 == 0) {
+            if (y % 2 == 0)
+            {
                 led_idx = y * WIDTH + (WIDTH - 1 - x);
             }
             float value = pixelFun.eval(current_time, float(idx), float(x), float(y));
