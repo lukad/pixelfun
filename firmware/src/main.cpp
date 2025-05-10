@@ -7,7 +7,7 @@
 #include <PixelFun.h>
 
 #ifndef DATA_PIN
-#define DATA_PIN A11
+#define DATA_PIN GPIO_NUM_6
 #endif
 #ifndef WIDTH
 #define WIDTH 8
